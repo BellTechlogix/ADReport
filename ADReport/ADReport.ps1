@@ -1,11 +1,45 @@
-﻿#FullADReport
-CSVDE -F c:\belltech\ADExport.csv
+﻿<#
+ADReport.ps1
+Created By Kristopher Roy
+Date Created 25Jan15
+Date Modified 05Oct17
+Script purpose - Gather details about an Active Directory Environment
+#>
 
-#Import CSV as Object
-$ADExport = Import-Csv c:\belltech\ADExport.csv
+#This Function creates a dialogue to return a Folder Path
+function Get-Folder {
+    param([string]$Description="Select Folder to place results in",[string]$RootFolder="Desktop")
+
+ [System.Reflection.Assembly]::LoadWithPartialName("System.windows.forms") |
+     Out-Null     
+
+   $objForm = New-Object System.Windows.Forms.FolderBrowserDialog
+        $objForm.Rootfolder = $RootFolder
+        $objForm.Description = $Description
+        $Show = $objForm.ShowDialog()
+        If ($Show -eq "OK")
+        {
+            Return $objForm.SelectedPath
+        }
+        Else
+        {
+            Write-Error "Operation cancelled by user."
+        }
+}
+
+#Folder Location for Reports
+$folder = get-folder
+#FullADReport
+#CSVDE Is a comprehensive AD tool that pulls a whole lot of AD Data
+CSVDE -F $folder\CSVDEADExport.csv
+
+#Import CSVDE CSV Report as Object
+$ADExport = Import-Csv $folder\CSVDEADExport.csv
+#Select Only Machines
 $computers = $ADExport|where-object{$_.objectClass -eq "computer"}|Select-Object -Property Name,operatingSystem,operatingSystemVersion,operatingSystemServicePack,userAccountControl,whenCreated,whenChanged,lastlogondate,dayssincelogon,description,cn,DN,memberOf,badPasswordTime,pwdLastSet,accountExpires,IPv4Address
+#Select Only Users
 $users = $ADExport|where-object{$_.objectClass -eq "user"}|Select-Object -Property SamAccountName,givenName,sn,telephoneNumber,mobile,mail,userAccountControl,whenCreated,whenChanged,lastlogondate,dayssincelogon,description,office,City,cn,DN,memberOf,badPasswordTime,pwdLastSet,LockedOut,accountExpires
-#$PSUsers = Get-ADUser -Properties * -Filter *
+
 $dcou = "ou=domain controllers,dc=ngkacu,dc=com"
 $dcs = Get-ADComputer -searchbase $dcou -filter '*'|where-object{$_.name -ne "DC1"}
 
