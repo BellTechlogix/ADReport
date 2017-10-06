@@ -51,7 +51,6 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ADReport.ps1" />
-    <Compile Include="Script.ps1" />
   </ItemGroup>
   <ItemGroup>
     <Content Include=".git\COMMIT_EDITMSG" />
