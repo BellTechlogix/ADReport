@@ -214,7 +214,9 @@ IF($folder -eq $null -or $folder -eq ""){$folder = $file.DirectoryName}
 $options01 = "Users","Machines","Both"
 $reportselection = MultipleSelectionBox -listboxtype one -inputarray $options01
 
-$dcs = Get-ADDomainController -Filter *
+#Gets all DC's and then verifies that they respond to get-aduser command, may throw errors, this is acceptable
+Write-Host "Pollig DC's for responsivness, may throw errors, this is acceptable"
+$dcs = Get-ADDomainController -Filter *|where{(Test-connection $_.hostname -quiet -count 1)-and (get-aduser -ResultSetSize 1 -Server $_.hostname -filter *)}
 
 #deffinition for UAC codes
 $lookup = @{4096="Workstation/Server"; 4098="Disabled Workstation/Server"; 4128="Workstation/Server No PWD"; 
@@ -228,6 +230,7 @@ $time = Get-Date
 #Select Only Machines
 IF($reportselection -eq "Machines" -or $reportselection -eq "Both")
 {
+	Write-Host "importing computer list may take some time"
 	$computers = Import-Csv $file|where-object{$_.objectClass -eq "computer"}|Select-Object -Property Name,operatingSystem,operatingSystemVersion,operatingSystemServicePack,userAccountControl,whenCreated,whenChanged,lastlogondate,dayssincelogon,description,cn,DN,memberOf,badPasswordTime,pwdLastSet,accountExpires,IPv4Address
 	#Doublecheck and format AD Report for PC's
 	FOREACH ($computer in $computers)
@@ -268,13 +271,14 @@ IF($reportselection -eq "Machines" -or $reportselection -eq "Both")
 #Select Only Users
 IF($reportselection -eq "Users" -or $reportselection -eq "Both")
 {
-	$users = Import-Csv $file|where-object{$_.objectClass -eq "user"}|Select-Object -Property SamAccountName,givenName,sn,telephoneNumber,mobile,mail,userAccountControl,whenCreated,whenChanged,lastlogondate,dayssincelogon,description,office,City,cn,DN,memberOf,badPasswordTime,pwdLastSet,LockedOut,accountExpires
+	Write-Host "importing user list may take some time"	
+	$users = Import-Csv $file|where-object{$_.objectClass -eq "user"}|Select-Object -Property displayname,SamAccountName,givenName,sn,telephoneNumber,mobile,mail,userAccountControl,whenCreated,whenChanged,lastlogondate,dayssincelogon,description,office,City,cn,DN,memberOf,badPasswordTime,pwdLastSet,LockedOut,accountExpires
 	#Doublecheck and format AD Report for Users
 	$i = 0
 	FOREACH ($user in $users)
 	{
 		$i++
-		Write-Progress -Activity ("Gathering User Date . . ."+$user.SamAccountName) -Status "Scanned: $i of $($users.Count)" -PercentComplete ($i/$users.Count*100)
+		Write-Progress -Activity ("Gathering User Date . . ."+$user.displayname) -Status "Scanned: $i of $($users.Count)" -PercentComplete ($i/$users.Count*100)
 		$curuser = $DCs |% { Get-ADUser -Server $_.HostName $user.sAMAccountName -Properties * } | sort-object -property lastLogondate| select -Last 1
 		$user.lastlogondate = Try{Get-Date $curuser.lastlogondate -format "M/d/yyyy hh:mm tt"}catch{}
 		try{$user.dayssincelogon = (New-TimeSpan -start $user.lastlogondate -end $time).days}catch{$user.dayssincelogon = "Null"}
