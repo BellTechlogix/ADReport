@@ -235,8 +235,8 @@ IF($reportselection -eq "Machines" -or $reportselection -eq "Both")
 	#Doublecheck and format AD Report for PC's
 	FOREACH ($computer in $computers)
 	{
-		$PC = $DCs |% { Get-ADComputer -Server $_.DNSHostName $computer.name -Properties * } | sort-object -property lastLogondate| select -Last 1
-		$IP = ($DCs |% { Get-ADComputer -Server $_.DNSHostName $computer.name -Properties IPv4Address } | sort-object -property IPv4Address| select -Last 1).IPv4Address
+		$PC = $DCs |% { Get-ADComputer -Server $_.HostName $computer.name -Properties * } | sort-object -property lastLogondate| select -Last 1
+		$IP = ($DCs |% { Get-ADComputer -Server $_.HostName $computer.name -Properties IPv4Address } | sort-object -property IPv4Address| select -Last 1).IPv4Address
 		IF($IP -ne $NULL){$computer.IPv4Address = $PC.IPv4Address}ELSE{$computer.IPv4Address = "0.0.0.0"}
 		$computer.lastlogondate = Try{Get-Date $PC.lastlogondate -format "M/d/yyyy hh:mm tt"}catch{}
 		try{$computer.dayssincelogon = (New-TimeSpan -start $computer.lastlogondate -end $time).days}catch{$computer.dayssincelogon = "Null"}
